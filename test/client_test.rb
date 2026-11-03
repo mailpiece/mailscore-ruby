@@ -173,6 +173,14 @@ class MailScore::ClientTest < Minitest::Test
     assert_nil result.subject
   end
 
+  def test_check_reads_each_symbols_description_when_the_server_sends_one
+    @stub.answer 200, JSON.generate(action: "no action", score: 2.5, complete: true, symbols: [
+      { name: "HOSTNAME_UNKNOWN", weight: 2.5, detail: "203.0.113.9", description: "Sending server has no verified host name" },
+      { name: "DATE_MISSING", weight: 1.0 } ])
+
+    assert_equal [ "Sending server has no verified host name", nil ], @client.check(MESSAGE).symbols.map(&:description)
+  end
+
   def test_check_sends_no_header_for_a_keyword_left_out
     @stub.answer 200, JSON.generate(action: "no action", score: 0, complete: true, symbols: [])
 

@@ -43,14 +43,15 @@ result = client.check(source, ip: "203.0.113.9", from: "alice@example.com", rcpt
 result.action     # => :no_action
 result.score      # => 2.5
 result.complete?  # => true
-result.symbols    # => [ #<data MailScore::Client::Result::Symbol name="HOSTNAME_UNKNOWN", weight=2.5, detail="203.0.113.9"> ]
+result.symbols    # => [ #<data MailScore::Client::Result::Symbol name="HOSTNAME_UNKNOWN", weight=2.5, detail="203.0.113.9",
+                  #      description="Sending server has no verified host name"> ]
 result.smtp_reply # => nil
 result.subject    # => nil
 ```
 
 Every keyword is optional and becomes the request header of the same name: `ip`, `helo`, `hostname`, `from`, `rcpt`, `deliver_to`, `user`, `tls_version`, `tls_cipher` and `queue_id`. One left out sends no header. Each value is a string of at most 1024 bytes with no control characters, such as a line break; anything else raises `MailScore::Client::Error` before the request is sent. `rcpt:` takes a string or an array of strings: the client adds a `Rcpt` field per address, Net::HTTP sends them as one comma-separated `Rcpt` header, and the server splits it, so an address with a comma in it raises too.
 
-`action` is `:no_action`, `:add_header`, `:rewrite_subject`, `:soft_reject` or `:reject`. `smtp_reply` has `code`, `enhanced` and `text` with `:soft_reject` and `:reject`, `subject` is set with `:rewrite_subject`, and `complete?` is false when the scan ran past its budget.
+`action` is `:no_action`, `:add_header`, `:rewrite_subject`, `:soft_reject` or `:reject`. `smtp_reply` has `code`, `enhanced` and `text` with `:soft_reject` and `:reject`, `subject` is set with `:rewrite_subject`, and `complete?` is false when the scan ran past its budget. Each symbol's `description` is the short label the server gives it, or nil from a server before 0.1.1.
 
 The answer is checked before it reaches you, so a reply or subject can be handed back to the SMTP client as it is. `smtp_reply` is nil unless its `code` is a 4xx for `:soft_reject` or a 5xx for `:reject`, `enhanced` has the same class, as in `5.7.1`, and `text` is 1 to 200 printable ASCII characters. `subject` is nil when it holds a line break. A `score` or weight that is not a number, or a `complete` that is not true or false, raises `MailScore::Client::Error`.
 

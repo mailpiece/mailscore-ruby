@@ -22,7 +22,9 @@ module MailScore
     Result = Data.define(:action, :score, :complete, :symbols, :smtp_reply, :subject) do
       def complete? = complete
     end
-    Result::Symbol = Data.define(:name, :weight, :detail)
+    Result::Symbol = Data.define(:name, :weight, :detail, :description) do
+      def initialize(name:, weight:, detail:, description: nil) = super
+    end
     Result::SmtpReply = Data.define(:code, :enhanced, :text)
 
     ACTIONS = %i[ no_action add_header rewrite_subject soft_reject reject ].to_h { [ it.to_s.tr("_", " "), it ] }.freeze
@@ -178,11 +180,15 @@ module MailScore
           action:,
           score: number(body.fetch("score")),
           complete: boolean(body.fetch("complete")),
-          symbols: body.fetch("symbols").map { Result::Symbol.new(name: it.fetch("name"), weight: number(it.fetch("weight")), detail: it["detail"]) },
+          symbols: body.fetch("symbols").map { symbol(it) },
           smtp_reply: smtp_reply(action, body["smtp_reply"]),
           subject: subject(body["subject"])
       rescue KeyError, TypeError, NoMethodError => error
         raise Error.new("unexpected /check response: #{error.message}", status: response.status)
+      end
+
+      def symbol(symbol)
+        Result::Symbol.new(name: symbol.fetch("name"), weight: number(symbol.fetch("weight")), detail: symbol["detail"], description: symbol["description"])
       end
 
       def number(value)
