@@ -188,11 +188,15 @@ module MailScore
       end
 
       def symbol(symbol)
-        Result::Symbol.new(name: symbol.fetch("name"), weight: number(symbol.fetch("weight")), detail: symbol["detail"], description: symbol["description"])
+        Result::Symbol.new(name: symbol.fetch("name"), weight: number(symbol.fetch("weight")), detail: text(symbol["detail"]), description: text(symbol["description"]))
       end
 
       def number(value)
         value.is_a?(Numeric) ? value : raise(TypeError, "#{value.inspect[0, 20]} is not a number")
+      end
+
+      def text(value)
+        value.nil? || value.is_a?(String) ? value : raise(TypeError, "#{value.inspect[0, 20]} is not text")
       end
 
       def boolean(value)
