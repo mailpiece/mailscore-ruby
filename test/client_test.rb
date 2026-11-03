@@ -173,6 +173,14 @@ class MailScore::ClientTest < Minitest::Test
     assert_nil result.subject
   end
 
+  def test_check_reads_each_symbols_description_when_the_server_sends_one
+    @stub.answer 200, JSON.generate(action: "no action", score: 2.5, complete: true, symbols: [
+      { name: "HOSTNAME_UNKNOWN", weight: 2.5, detail: "203.0.113.9", description: "Sending server has no verified host name" },
+      { name: "DATE_MISSING", weight: 1.0 } ])
+
+    assert_equal [ "Sending server has no verified host name", nil ], @client.check(MESSAGE).symbols.map(&:description)
+  end
+
   def test_check_sends_no_header_for_a_keyword_left_out
     @stub.answer 200, JSON.generate(action: "no action", score: 0, complete: true, symbols: [])
 
@@ -239,6 +247,20 @@ class MailScore::ClientTest < Minitest::Test
       @stub.answer 200, JSON.generate(action: "no action", **fields)
       assert_raises(MailScore::Client::Error, fields.inspect) { @client.check(MESSAGE) }
     end
+  end
+
+  def test_check_raises_when_a_symbols_detail_or_description_is_not_text
+    [ { name: "X", weight: 1.5, detail: 42 }, { name: "X", weight: 1.5, description: [ "No PTR" ] } ].each do |symbol|
+      @stub.answer 200, JSON.generate(action: "no action", score: 1.5, complete: true, symbols: [ symbol ])
+      assert_raises(MailScore::Client::Error, symbol.inspect) { @client.check(MESSAGE) }
+    end
+  end
+
+  def test_check_reads_a_null_or_absent_detail_and_description_as_nil
+    @stub.answer 200, JSON.generate(action: "no action", score: 2.5, complete: true, symbols: [
+      { name: "X", weight: 1.5, detail: nil, description: nil }, { name: "Y", weight: 1.0 } ])
+
+    assert_equal [ [ nil, nil ], [ nil, nil ] ], @client.check(MESSAGE).symbols.map { [ it.detail, it.description ] }
   end
 
   def test_check_leaves_out_an_smtp_reply_that_could_not_go_back_as_it_is
