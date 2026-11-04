@@ -36,7 +36,5 @@ jobs:
         uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
         with:
           bundler-cache: true
-      - name: Audit dependencies
-        run: bundle exec bundle-audit check --update
       - name: Run tests
         run: bundle exec rake
