@@ -29,7 +29,8 @@ module MailScore
 
     ACTIONS = %i[ no_action add_header rewrite_subject soft_reject reject ].to_h { [ it.to_s.tr("_", " "), it ] }.freeze
 
-    ENVELOPE = { ip: "IP", helo: "Helo", hostname: "Hostname", from: "From", rcpt: "Rcpt", deliver_to: "Deliver-To",
+    ENVELOPE = { ip: "IP", helo: "Helo", hostname: "Hostname", reverse_dns_status: "Reverse-DNS-Status",
+      unconfirmed_hostname: "Unconfirmed-Hostname", from: "From", rcpt: "Rcpt", deliver_to: "Deliver-To",
       user: "User", tls_version: "TLS-Version", tls_cipher: "TLS-Cipher", queue_id: "Queue-Id" }.freeze
     ENVELOPE_LIMIT = 1024
     BODY_LIMIT = 1_048_576
@@ -48,9 +49,9 @@ module MailScore
       @open_timeout, @read_timeout, @deadline = open_timeout, read_timeout, deadline
     end
 
-    def check(message, ip: nil, helo: nil, hostname: nil, from: nil, rcpt: nil, deliver_to: nil, user: nil,
-      tls_version: nil, tls_cipher: nil, queue_id: nil)
-      envelope = { ip:, helo:, hostname:, from:, rcpt:, deliver_to:, user:, tls_version:, tls_cipher:, queue_id: }
+    def check(message, ip: nil, helo: nil, hostname: nil, reverse_dns_status: nil, unconfirmed_hostname: nil, from: nil, rcpt: nil,
+      deliver_to: nil, user: nil, tls_version: nil, tls_cipher: nil, queue_id: nil)
+      envelope = { ip:, helo:, hostname:, reverse_dns_status:, unconfirmed_hostname:, from:, rcpt:, deliver_to:, user:, tls_version:, tls_cipher:, queue_id: }
       result(post("/check", message, @read_token, envelope_headers(envelope)))
     end
 
