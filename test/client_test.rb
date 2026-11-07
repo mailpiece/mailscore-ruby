@@ -152,8 +152,8 @@ class MailScore::ClientTest < Minitest::Test
     @stub.answer 200, JSON.generate(action: "add header", score: 7.1, complete: true,
       symbols: [ { name: "HOSTNAME_UNKNOWN", weight: 1.5, detail: "no PTR for 203.0.113.9" } ])
 
-    result = @client.check(MESSAGE, ip: "203.0.113.9", helo: "mx.example.com", hostname: "unknown", from: "<>",
-      rcpt: [ "someone@example.org" ], deliver_to: "box@example.org", user: "alice", tls_version: "TLSv1.3",
+    result = @client.check(MESSAGE, ip: "203.0.113.9", helo: "mx.example.com", hostname: "unknown",
+      reverse_dns_status: "unconfirmed", unconfirmed_hostname: "host-203-0-113-9.example.net", from: "<>", rcpt: [ "someone@example.org" ], deliver_to: "box@example.org", user: "alice", tls_version: "TLSv1.3",
       tls_cipher: "TLS_AES_256_GCM_SHA384", queue_id: "4Q1abc")
 
     request = @stub.requests.last
@@ -161,7 +161,8 @@ class MailScore::ClientTest < Minitest::Test
     assert_equal [ "Bearer read-token" ], request["Authorization"]
     assert_equal [ "message/rfc822" ], request["Content-Type"]
     assert_equal MESSAGE, request.body
-    { "IP" => "203.0.113.9", "Helo" => "mx.example.com", "Hostname" => "unknown", "From" => "<>", "Rcpt" => "someone@example.org",
+    { "IP" => "203.0.113.9", "Helo" => "mx.example.com", "Hostname" => "unknown", "Reverse-DNS-Status" => "unconfirmed",
+      "Unconfirmed-Hostname" => "host-203-0-113-9.example.net", "From" => "<>", "Rcpt" => "someone@example.org",
       "Deliver-To" => "box@example.org", "User" => "alice", "TLS-Version" => "TLSv1.3", "TLS-Cipher" => "TLS_AES_256_GCM_SHA384",
       "Queue-Id" => "4Q1abc" }.each { |name, value| assert_equal [ value ], request[name], name }
 
@@ -188,7 +189,7 @@ class MailScore::ClientTest < Minitest::Test
 
     request = @stub.requests.last
     assert_equal [ "203.0.113.9" ], request["IP"]
-    %w[ Helo Hostname From Rcpt Deliver-To User TLS-Version TLS-Cipher Queue-Id ].each { |name| assert_empty request[name], name }
+    %w[ Helo Hostname Reverse-DNS-Status Unconfirmed-Hostname From Rcpt Deliver-To User TLS-Version TLS-Cipher Queue-Id ].each { |name| assert_empty request[name], name }
   end
 
   def test_check_sends_every_recipient
