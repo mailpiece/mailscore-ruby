@@ -47,13 +47,14 @@ result.symbols    # => [ #<data MailScore::Client::Result::Symbol name="HOSTNAME
                   #      description="Sending server has no verified host name"> ]
 result.smtp_reply # => nil
 result.subject    # => nil
+result.headers    # => [ [ "X-Spam-Flag", "NO" ], [ "X-Spam-Score", "2.5" ], ... ]
 ```
 
 Every keyword is optional and becomes the request header of the same name: `ip`, `helo`, `hostname`, `reverse_dns_status`, `unconfirmed_hostname`, `from`, `rcpt`, `deliver_to`, `user`, `tls_version`, `tls_cipher` and `queue_id`. One left out sends no header. Each value is a string of at most 1024 bytes with no control characters, such as a line break; anything else raises `MailScore::Client::Error` before the request is sent. `rcpt:` takes a string or an array of strings: the client adds a `Rcpt` field per address, Net::HTTP sends them as one comma-separated `Rcpt` header, and the server splits it, so an address with a comma in it raises too. `reverse_dns_status` is how your reverse DNS lookup went, `confirmed`, `unconfirmed`, `none` or `temporary_failure`, and `unconfirmed_hostname` the PTR name that did not resolve back; a server that predates them ignores them.
 
-`action` is `:no_action`, `:add_header`, `:rewrite_subject`, `:soft_reject` or `:reject`. `smtp_reply` has `code`, `enhanced` and `text` with `:soft_reject` and `:reject`, `subject` is set with `:rewrite_subject`, and `complete?` is false when the scan ran past its budget. Each symbol's `description` is the short label the server gives it, or nil from a server before 0.1.1.
+`action` is `:no_action`, `:add_header`, `:rewrite_subject`, `:soft_reject` or `:reject`. `smtp_reply` has `code`, `enhanced` and `text` with `:soft_reject` and `:reject`, `subject` is set with `:rewrite_subject`, and `complete?` is false when the scan ran past its budget. Each symbol's `description` is the short label the server gives it, or nil from a server before 0.1.1. `headers` are the spam header fields, as `[ name, value ]` pairs in order, to prepend to the message you hand on after removing any `X-Spam-` field the sender wrote; a server that predates them gives none.
 
-The answer is checked before it reaches you, so a reply or subject can be handed back to the SMTP client as it is. `smtp_reply` is nil unless its `code` is a 4xx for `:soft_reject` or a 5xx for `:reject`, `enhanced` has the same class, as in `5.7.1`, and `text` is 1 to 200 printable ASCII characters. `subject` is nil when it holds a line break. A `score` or weight that is not a number, or a `complete` that is not true or false, raises `MailScore::Client::Error`.
+The answer is checked before it reaches you, so a reply or subject can be handed back to the SMTP client as it is. `smtp_reply` is nil unless its `code` is a 4xx for `:soft_reject` or a 5xx for `:reject`, `enhanced` has the same class, as in `5.7.1`, and `text` is 1 to 200 printable ASCII characters. `subject` is nil when it holds a line break, and a header is left out unless its name is a field name and its value one line of text. A `score` or weight that is not a number, or a `complete` that is not true or false, raises `MailScore::Client::Error`.
 
 ### Learn spam and ham
 
