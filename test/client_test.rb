@@ -287,6 +287,40 @@ class MailScore::ClientTest < Minitest::Test
     end
   end
 
+  def test_check_returns_the_spam_headers_in_order
+    headers = [ [ "X-Spam-Flag", "YES" ], [ "X-Spam-Score", "7.3" ], [ "X-Spam-Level", "*******" ],
+      [ "X-Spam-Status", "Yes, score=7.3 required=6.0 tests=A,B" ], [ "X-Spam-Action", "add header" ] ]
+    @stub.answer 200, JSON.generate(action: "add header", score: 7.3, complete: true, symbols: [], headers:)
+
+    result = @client.check(MESSAGE)
+    assert_equal headers, result.headers
+    assert result.headers.flatten.all?(&:frozen?)
+  end
+
+  def test_check_reads_headers_that_are_absent_or_not_a_list_as_none
+    [ {}, { headers: nil }, { headers: { "X-Spam-Flag" => "YES" } }, { headers: "X-Spam-Flag: YES" } ].each do |fields|
+      @stub.answer 200, JSON.generate(action: "no action", score: 0, complete: true, symbols: [], **fields)
+      assert_equal [], @client.check(MESSAGE).headers, fields.inspect
+    end
+  end
+
+  def test_check_leaves_out_a_header_that_is_not_a_name_and_a_value
+    @stub.answer 200, JSON.generate(action: "add header", score: 7, complete: true, symbols: [], headers: [
+      [ "X-Spam-Flag", "YES" ], [ "X-Spam-Score" ], [ "X-Spam-Score", "7", "extra" ], [ "X-Spam-Score", 7 ], [ 7, "7" ],
+      "X-Spam-Score: 7", { "X-Spam-Score" => "7" }, nil, [ "", "7" ], [ "X Spam", "7" ], [ "X-Spam:Score", "7" ], [ "X-Spämm", "7" ],
+      [ "X-Spam-Level", "" ] ])
+
+    assert_equal [ [ "X-Spam-Flag", "YES" ], [ "X-Spam-Level", "" ] ], @client.check(MESSAGE).headers
+  end
+
+  def test_check_leaves_out_a_header_with_a_line_break
+    @stub.answer 200, JSON.generate(action: "add header", score: 7, complete: true, symbols: [], headers: [
+      [ "X-Spam-Status", "Yes\r\nBcc: victim@example.com" ], [ "X-Spam-Status", "Yes\nBcc: victim@example.com" ],
+      [ "X-Spam-Status", "Yes\rBcc: victim@example.com" ], [ "X-Spam-Flag\r\nBcc: victim@example.com", "YES" ], [ "X-Spam-Flag", "YES" ] ])
+
+    assert_equal [ [ "X-Spam-Flag", "YES" ] ], @client.check(MESSAGE).headers
+  end
+
   def test_learning_uses_the_write_token_and_tells_new_from_already_learned
     @stub.answer 200, JSON.generate(learned: true)
     assert_equal true, @client.spam!(MESSAGE)

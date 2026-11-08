@@ -19,7 +19,8 @@ module MailScore
     # A timeout or a connection that failed, with no answer from the server.
     class Unreachable < Error; end
 
-    Result = Data.define(:action, :score, :complete, :symbols, :smtp_reply, :subject) do
+    Result = Data.define(:action, :score, :complete, :symbols, :smtp_reply, :subject, :headers) do
+      def initialize(action:, score:, complete:, symbols:, smtp_reply:, subject:, headers: []) = super
       def complete? = complete
     end
     Result::Symbol = Data.define(:name, :weight, :detail, :description) do
@@ -183,7 +184,8 @@ module MailScore
           complete: boolean(body.fetch("complete")),
           symbols: body.fetch("symbols").map { symbol(it) },
           smtp_reply: smtp_reply(action, body["smtp_reply"]),
-          subject: subject(body["subject"])
+          subject: subject(body["subject"]),
+          headers: headers(body["headers"])
       rescue KeyError, TypeError, NoMethodError => error
         raise Error.new("unexpected /check response: #{error.message}", status: response.status)
       end
@@ -218,6 +220,19 @@ module MailScore
 
       def subject(subject)
         subject if subject.is_a?(String) && subject.valid_encoding? && !subject.match?(/[\r\n]/)
+      end
+
+      # A pair is kept only when it could be prepended to the message as it is:
+      # a field name, and a value on one line.
+      def headers(headers)
+        return [].freeze unless headers.is_a?(Array)
+
+        headers.filter_map do |pair|
+          name, value = pair if pair.is_a?(Array) && pair.size == 2
+          if ascii?(name, /\A[!-9;-~]+\z/) && value.is_a?(String) && value.valid_encoding? && !value.match?(/[\r\n]/)
+            [ name, value ].map { -it }.freeze
+          end
+        end.freeze
       end
 
       def ascii?(value, pattern)
